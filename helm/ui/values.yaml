@@ -86,21 +86,6 @@ app:
     orders: http://orders
 
 # ----------------------------------------------------------------------------
-# AUTOSCALING - HORIZONTAL POD AUTOSCALER (HPA
-# ----------------------------------------------------------------------------
-autoscaling:
-  enabled: true
-
-  apiVersion: argoproj.io/v1alpha1
-  kind: Rollout
-
-  minReplicas: 2
-  maxReplicas: 4
-
-  targetCPUUtilizationPercentage: 70
-  targetMemoryUtilizationPercentage: 80
-
-# ----------------------------------------------------------------------------
 # KARPENTER NODE SELECTION
 # ----------------------------------------------------------------------------
 # Schedule pods on Karpenter On-Demand nodes for stability

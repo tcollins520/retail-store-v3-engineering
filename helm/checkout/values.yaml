@@ -82,22 +82,6 @@ app:
 # ----------------------------------------------------------------------------
 # AUTOSCALING - HORIZONTAL POD AUTOSCALER (HPA)
 # ----------------------------------------------------------------------------
-autoscaling:
-  enabled: true
-
-  apiVersion: apps/v1
-  kind: Deployment
-
-  minReplicas: 2
-  maxReplicas: 12
-
-  targetCPUUtilizationPercentage: 70
-  targetMemoryUtilizationPercentage: 80
-
-# ----------------------------------------------------------------------------
-# KARPENTER NODE SELECTION
-# ----------------------------------------------------------------------------
-# Schedule pods on Karpenter On-Demand nodes for stability
 nodeSelector: {}
 
 tolerations: []
