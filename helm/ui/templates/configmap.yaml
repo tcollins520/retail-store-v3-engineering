@@ -1,0 +1,15 @@
+{{- if .Values.configMap.enabled }}
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: {{ include "ui.configMapName" . }}
+
+data:
+  RETAIL_UI_ENDPOINTS_CATALOG: {{ .Values.app.endpoints.catalog | quote }}
+  RETAIL_UI_ENDPOINTS_CARTS: {{ .Values.app.endpoints.carts | quote }}
+  RETAIL_UI_ENDPOINTS_CHECKOUT: {{ .Values.app.endpoints.checkout | quote }}
+  RETAIL_UI_ENDPOINTS_ORDERS: {{ .Values.app.endpoints.orders | quote }}
+  RETAIL_UI_THEME: {{ .Values.app.theme | quote }}
+
+{{- end }}

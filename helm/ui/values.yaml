@@ -1,0 +1,190 @@
+# ============================================================================
+# UI SERVICE - CUSTOM VALUES 
+# ============================================================================
+ 
+# ----------------------------------------------------------------------------
+# IMAGE CONFIGURATION
+# ----------------------------------------------------------------------------
+replicaCount: 2
+
+image:
+  repository: tcollins520/retail-store-ui
+  pullPolicy: IfNotPresent
+  tag: "v2"
+
+containerPort: 8080
+
+service:
+  type: ClusterIP
+  port: 80
+  name: ui
+  targetPort: 8080
+
+serviceAccount:
+  create: true
+  name: ui
+
+
+# ----------------------------------------------------------------------------
+# SECURITY
+# ----------------------------------------------------------------------------
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+  seccompProfile:
+    type: RuntimeDefault
+
+  capabilities:
+    drop:
+      - ALL
+
+# ----------------------------------------------------------------------------
+# HEALTH PROBES
+# ----------------------------------------------------------------------------
+probes:
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 30
+    periodSeconds: 10
+# ----------------------------------------------------------------------------
+# RESOURCE MANAGEMENT
+# ----------------------------------------------------------------------------
+resources:
+  requests:
+    cpu: 100m
+    memory: 384Mi
+
+  limits:
+    cpu: 512m
+    memory: 1Gi
+
+# ---------------------------------------------------------
+# ConfigMap Values: endpoints:
+# ---------------------------------------------------------
+configMap:
+  enabled: true
+
+# ---------------------------------------------------------
+# ConfigMap Values: endpoints:
+# ---------------------------------------------------------
+app:
+  theme: green # Options: orange, default, green, teal
+
+  endpoints:
+    catalog: http://catalog
+    carts: http://carts
+    checkout: http://checkout
+    orders: http://orders
+
+# ----------------------------------------------------------------------------
+# AUTOSCALING - HORIZONTAL POD AUTOSCALER (HPA
+# ----------------------------------------------------------------------------
+autoscaling:
+  enabled: true
+
+  apiVersion: argoproj.io/v1alpha1
+  kind: Rollout
+
+  minReplicas: 2
+  maxReplicas: 4
+
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ----------------------------------------------------------------------------
+# KARPENTER NODE SELECTION
+# ----------------------------------------------------------------------------
+# Schedule pods on Karpenter On-Demand nodes for stability
+nodeSelector: {}
+
+affinity: {}
+
+tolerations: []
+
+# ----------------------------------------------------------------------------
+# TOPOLOGY SPREAD CONSTRAINTS
+# ----------------------------------------------------------------------------
+# Distribute pods across nodes AND availability zones for high availability
+topologySpreadConstraints:
+  enabled: true
+
+  node:
+    maxSkew: 1
+    whenUnsatisfiable: ScheduleAnyway
+
+  zone:
+    maxSkew: 1
+    whenUnsatisfiable: DoNotSchedule
+
+# ----------------------------------------------------------------------------
+# POD DISRUPTION BUDGET (PDB) 
+# ----------------------------------------------------------------------------
+# Maintain minimum availability during voluntary disruptions (node drains, etc.)
+podDisruptionBudget:
+  enabled: false # set to true to enable Pod Disruption Budget. If enabled, it will ensure that at least 2 pods are always available during voluntary disruptions (like node drains).
+  minAvailable: 2 # At least 2 pods must remain available
+
+
+# ----------------------------------------------------------------------------
+# PROMETHEUS SCRAPING
+# ----------------------------------------------------------------------------
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"
+
+
+# ----------------------------------------------------------------------------
+# OPENTELEMETRY INSTRUMENTATION
+# ----------------------------------------------------------------------------
+opentelemetry:
+  enabled: true
+
+  sdk:
+    disabled: "false"
+    endpoint: http://retail-traces-collector.observability:4318
+    protocol: http/protobuf
+
+    tracesExporter: otlp
+    metricsExporter: none
+    logsExporter: none
+
+    serviceName: ui
+
+# ----------------------------------------------------------------------------
+# INGRESS CONFIGURATION
+# ----------------------------------------------------------------------------
+ingress:
+  enabled: true
+
+  className: alb
+
+  hostname: shop.tinacloud.dev
+
+  annotations:
+    kubernetes.io/ingress.class: alb
+
+    alb.ingress.kubernetes.io/scheme: internet-facing
+
+    alb.ingress.kubernetes.io/target-type: ip
+
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:162663626265:certificate/a4eb55e2-32e6-4241-8775-262a19640c13
+
+    alb.ingress.kubernetes.io/healthcheck-path: /
+
+    alb.ingress.kubernetes.io/success-codes: "200"
+
+    external-dns.alpha.kubernetes.io/hostname: shop.tinacloud.dev

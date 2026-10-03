@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: {{ include "checkout.fullname" . }}
+  labels:
+    {{- include "checkout.labels" . | nindent 4 }}
+
+spec:
+{{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+{{- end }}
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+
+  selector:
+    matchLabels:
+      {{- include "checkout.selectorLabels" . | nindent 6 }}
+
+  template:
+
+    metadata:
+
+      annotations:
+
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+
+{{- with .Values.podAnnotations }}
+{{ toYaml . | nindent 8 }}
+{{- end }}
+
+      labels:
+{{ include "checkout.selectorLabels" . | nindent 8 }}
+
+    spec:
+
+      serviceAccountName: {{ include "checkout.serviceAccountName" . }}
+
+      terminationGracePeriodSeconds: 30
+
+
+      securityContext:
+{{ toYaml .Values.podSecurityContext | nindent 8 }}
+
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | nindent 8 }}
+{{- end }}
+
+{{- if .Values.topologySpreadConstraints.enabled }}
+      topologySpreadConstraints:
+
+        - maxSkew: {{ .Values.topologySpreadConstraints.node.maxSkew }}
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: {{ .Values.topologySpreadConstraints.node.whenUnsatisfiable }}
+
+          labelSelector:
+            matchLabels:
+{{ include "checkout.selectorLabels" . | nindent 14 }}
+
+        - maxSkew: {{ .Values.topologySpreadConstraints.zone.maxSkew }}
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: {{ .Values.topologySpreadConstraints.zone.whenUnsatisfiable }}
+
+          labelSelector:
+            matchLabels:
+{{ include "checkout.selectorLabels" . | nindent 14 }}
+
+{{- end }}
+
+{{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | nindent 8 }}
+{{- end }}
+
+{{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | nindent 8 }}
+{{- end }}
+
+      containers:
+        - name: {{ include "checkout.fullname" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          envFrom:
+            - configMapRef:
+                name: {{ include "checkout.fullname" . }}
+          env:
+
+            - name: OTEL_SDK_DISABLED
+              value: "{{ .Values.opentelemetry.sdk.disabled }}"
+
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "{{ .Values.opentelemetry.sdk.endpoint }}"
+
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "{{ .Values.opentelemetry.sdk.protocol }}"
+
+            - name: OTEL_SERVICE_NAME
+              value: "{{ .Values.opentelemetry.sdk.serviceName }}"
+
+            - name: OTEL_TRACES_EXPORTER
+              value: "{{ .Values.opentelemetry.sdk.tracesExporter }}"
+
+            - name: OTEL_METRICS_EXPORTER
+              value: "{{ .Values.opentelemetry.sdk.metricsExporter }}"
+
+            - name: OTEL_LOGS_EXPORTER
+              value: "{{ .Values.opentelemetry.sdk.logsExporter }}"
+
+          securityContext:
+{{ toYaml .Values.securityContext | nindent 12 }}
+
+          ports:
+            - name: http
+              containerPort: {{ .Values.containerPort }}
+              protocol: TCP
+
+          startupProbe:
+            httpGet:
+              path: {{ .Values.probes.startup.path }}
+              port: {{ .Values.containerPort }}
+
+            failureThreshold: 60
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: {{ .Values.containerPort }}
+
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: {{ .Values.containerPort }}
+
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+
+          resources:
+{{ toYaml .Values.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+
+      volumes:
+
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory

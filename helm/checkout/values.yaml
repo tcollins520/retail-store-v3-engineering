@@ -1,0 +1,156 @@
+# ============================================================================
+# CHECKOUT SERVICE - CUSTOM VALUES
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# IMAGE CONFIGURATION
+# ----------------------------------------------------------------------------
+replicaCount: 1
+
+image:
+  repository: tcollins520/retail-store-checkout
+  pullPolicy: IfNotPresent
+  tag: "1.3.0"
+
+containerPort: 8080
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+serviceAccount:
+  create: true
+  name: checkout
+
+# ----------------------------------------------------------------------------
+# SECURITY
+# ----------------------------------------------------------------------------
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+  seccompProfile:
+    type: RuntimeDefault
+
+  capabilities:
+    drop:
+      - ALL
+podSecurityContext:
+  fsGroup: 1000
+
+# ----------------------------------------------------------------------------
+# HEALTH PROBES
+# ----------------------------------------------------------------------------
+probes:
+  startup:
+    path: /health
+
+  readiness:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+  liveness:
+    path: /health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+# ----------------------------------------------------------------------------
+# RESOURCE MANAGEMENT
+# ----------------------------------------------------------------------------
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+  limits:
+    cpu: 512m
+    memory: 1Gi
+
+# ----------------------------------------------------------------------------
+# APPLICATION CONFIGURATION
+# ElastiCache Redis database connection string and other environment variables are defined here
+# ---------------------------------------------------------
+app:
+  persistence:
+    provider: redis
+    redisUrl: "redis://prod-checkout-redis.m7f8mc.0001.use1.cache.amazonaws.com:6379"
+  endpoints:
+    orders: http://orders #orders service endpoint (ClusterIP service name)
+# ----------------------------------------------------------------------------
+# AUTOSCALING - HORIZONTAL POD AUTOSCALER (HPA)
+# ----------------------------------------------------------------------------
+autoscaling:
+  enabled: true
+
+  apiVersion: apps/v1
+  kind: Deployment
+
+  minReplicas: 2
+  maxReplicas: 12
+
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# ----------------------------------------------------------------------------
+# KARPENTER NODE SELECTION
+# ----------------------------------------------------------------------------
+# Schedule pods on Karpenter On-Demand nodes for stability
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# ----------------------------------------------------------------------------
+# TOPOLOGY SPREAD CONSTRAINTS
+# ----------------------------------------------------------------------------
+# Distribute pods across nodes and availability zones for high availability
+topologySpreadConstraints:
+  enabled: true
+
+  node:
+    maxSkew: 1
+    whenUnsatisfiable: ScheduleAnyway
+
+  zone:
+    maxSkew: 1
+    whenUnsatisfiable: DoNotSchedule
+
+# ----------------------------------------------------------------------------
+# POD DISRUPTION BUDGET (PDB) 
+# ----------------------------------------------------------------------------
+# Maintain minimum availability during voluntary disruptions (node drains, etc.)
+podDisruptionBudget:
+  enabled: false # set to true to enable Pod Disruption Budget. If enabled, it will ensure that at least 2 pods are always available during voluntary disruptions (like node drains).
+  minAvailable: 2 # At least 2 pods must remain available
+
+# ----------------------------------------------------------------------------
+# PROMETHEUS SCRAPING
+# ----------------------------------------------------------------------------
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+
+# ----------------------------------------------------------------------------
+# OPENTELEMETRY INSTRUMENTATION
+# ----------------------------------------------------------------------------
+opentelemetry:
+  enabled: true
+
+  sdk:
+    disabled: "false"
+    endpoint: http://retail-traces-collector.observability:4318
+    protocol: http/protobuf
+
+    tracesExporter: otlp
+    metricsExporter: none
+    logsExporter: none
+
+    serviceName: checkout
+
+  

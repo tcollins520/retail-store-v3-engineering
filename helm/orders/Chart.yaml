@@ -1,0 +1,25 @@
+apiVersion: v2
+
+name: orders
+
+description: Retail Store v3 Orders Service
+
+type: application
+
+version: 1.0.0
+
+appVersion: "1.3.0"
+
+keywords:
+  - retail
+  - platform-engineering
+  - kubernetes
+  - spring-boot
+
+home: https://shop-v3.tinacloud.dev
+
+maintainers:
+  - name: Tina Collins
+
+sources:
+  - https://github.com/tcollins520/retail-store-v3-engineering

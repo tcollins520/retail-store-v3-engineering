@@ -1,0 +1,172 @@
+# ============================================================================
+# CARTS MICRO SERVICE - CUSTOM VALUES
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# IMAGE CONFIGURATION
+# ----------------------------------------------------------------------------
+replicaCount: 1 
+
+image:
+  repository: tcollins520/retail-store-cart
+  pullPolicy: IfNotPresent
+  tag: "1.3.0"
+
+containerPort: 8080
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+serviceAccount:
+  create: true
+  name: carts
+
+# ----------------------------------------------------------------------------
+# SECURITY
+# ----------------------------------------------------------------------------
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+  seccompProfile:
+    type: RuntimeDefault
+
+  capabilities:
+    drop:
+      - ALL
+podSecurityContext:
+  fsGroup: 1000
+
+# ----------------------------------------------------------------------------
+# HEALTH PROBES
+# ----------------------------------------------------------------------------
+probes:
+  startup:
+    path: /actuator/health
+
+  readiness:
+    path: /actuator/health
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+  liveness:
+    path: /actuator/health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+# ----------------------------------------------------------------------------
+# RESOURCE MANAGEMENT
+# ----------------------------------------------------------------------------
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+  limits:
+    cpu: 512m
+    memory: 1Gi
+
+# ----------------------------------------------------------------------------
+# CONFIGMAP
+# ----------------------------------------------------------------------------
+configMap:
+  enabled: true
+  name:
+
+# ----------------------------------------------------------------------------
+# DATABASE CONFIGURATION
+# ----------------------------------------------------------------------------
+database:
+  RETAIL_CART_PERSISTENCE_PROVIDER: dynamodb
+  RETAIL_CART_PERSISTENCE_DYNAMODB_TABLE_NAME: Items
+  RETAIL_CART_PERSISTENCE_DYNAMODB_CREATE_TABLE: "false" # Set to "true" to allow the application to create the DynamoDB table if it doesn't exist (not recommended for production)
+  RETAIL_CART_PERSISTENCE_DYNAMODB_ENDPOINT: https://dynamodb.us-west-2.amazonaws.com
+  AWS_REGION: us-west-2
+  AWS_DEFAULT_REGION: us-west-2
+
+app:
+  endpoints:
+    catalog: http://catalog
+    carts: http://carts
+    checkout: http://checkout
+    orders: http://orders 
+    
+# AUTOSCALING - HORIZONTAL POD AUTOSCALER (HPA)
+# ----------------------------------------------------------------------------
+autoscaling:
+  enabled: true
+
+  apiVersion: apps/v1
+  kind: Deployment
+
+  minReplicas: 2
+  maxReplicas: 10
+
+  cpu:
+    enabled: true
+    targetUtilization: 70
+
+  memory:
+    enabled: true
+    targetUtilization: 80
+
+# ----------------------------------------------------------------------------
+# KARPENTER NODE SELECTION
+# ----------------------------------------------------------------------------
+# Schedule pods on Karpenter On-Demand nodes for stability
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# ----------------------------------------------------------------------------
+# TOPOLOGY SPREAD CONSTRAINTS
+# ----------------------------------------------------------------------------
+# Distribute pods across nodes and availability zones for high availability
+topologySpreadConstraints:
+  enabled: true
+
+  node:
+    maxSkew: 1
+    whenUnsatisfiable: ScheduleAnyway
+
+  zone:
+    maxSkew: 1
+    whenUnsatisfiable: DoNotSchedule
+
+# ----------------------------------------------------------------------------
+# POD DISRUPTION BUDGET (PDB) 
+# ----------------------------------------------------------------------------
+# Maintain minimum availability during voluntary disruptions (node drains, etc.)
+podDisruptionBudget:
+  enabled: false # set to true to enable Pod Disruption Budget. If enabled, it will ensure that at least 2 pods are always available during voluntary disruptions (like node drains).
+  minAvailable: 2 # At least 2 pods must remain available
+
+# ----------------------------------------------------------------------------
+# PROMETHEUS SCRAPING
+# ----------------------------------------------------------------------------
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"
+
+
+# ----------------------------------------------------------------------------
+# OPENTELEMETRY INSTRUMENTATION
+# ----------------------------------------------------------------------------
+opentelemetry:
+  enabled: true
+
+  sdk:
+    disabled: "false"
+    endpoint: http://retail-traces-collector.observability:4318
+    protocol: http/protobuf
+
+    tracesExporter: otlp
+    metricsExporter: none
+    logsExporter: none
+    serviceName: carts

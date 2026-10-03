@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "carts.fullname" . }}
+data:
+  RETAIL_CART_PERSISTENCE_PROVIDER: {{ .Values.database.RETAIL_CART_PERSISTENCE_PROVIDER | quote }}
+  RETAIL_CART_PERSISTENCE_DYNAMODB_TABLE_NAME: {{ .Values.database.RETAIL_CART_PERSISTENCE_DYNAMODB_TABLE_NAME | quote }}
+  RETAIL_CART_PERSISTENCE_DYNAMODB_CREATE_TABLE: {{ .Values.database.RETAIL_CART_PERSISTENCE_DYNAMODB_CREATE_TABLE | quote }}
+  RETAIL_CART_PERSISTENCE_DYNAMODB_ENDPOINT: {{ .Values.database.RETAIL_CART_PERSISTENCE_DYNAMODB_ENDPOINT | quote }}
+  AWS_REGION: {{ .Values.database.AWS_REGION | quote }}
+  AWS_DEFAULT_REGION: {{ .Values.database.AWS_DEFAULT_REGION | quote }}
