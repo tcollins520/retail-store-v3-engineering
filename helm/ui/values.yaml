@@ -10,7 +10,7 @@ replicaCount: 2
 image:
   repository: tcollins520/retail-store-ui
   pullPolicy: IfNotPresent
-  tag: "v2"
+  tag: "v3-amd64"
 
 containerPort: 8080
 
