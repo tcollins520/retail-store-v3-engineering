@@ -55,6 +55,8 @@ Selector labels
 {{- define "checkout.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "checkout.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: service
+app.kubernetes.io/owner: retail-store-app
 {{- end }}
 
 {{/*
